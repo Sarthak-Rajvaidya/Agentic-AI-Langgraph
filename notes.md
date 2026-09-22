@@ -17,3 +17,10 @@ worflow that introduce the idea of graph that can repeadetly execute steps,evalu
 
 An iterative workflow is a workflow in which a process repeats multiple times until a particular condition is satisfied or a stopping limit is reached.
 Instead of executing each node only once in a straight line, the graph can loop back to an earlier node.
+
+
+Differbe vs sequentail workflow vs itervative 
+
+sequential - runs once
+
+Itevative - repeats look at previous response
