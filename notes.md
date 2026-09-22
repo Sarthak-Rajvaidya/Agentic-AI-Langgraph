@@ -11,3 +11,9 @@ task 2 and task 3 to run simutebously so to get start with task 4 so here parall
 (3) Conditional workflow
 
 It is hwere we apply conditional loops same like if-else ok Like when task 1 is done so decide should we need to move to task 2 or task 3 that itv
+
+(4) Iteravtive workflow:-
+worflow that introduce the idea of graph that can repeadetly execute steps,evalute results,and improve its output 
+
+An iterative workflow is a workflow in which a process repeats multiple times until a particular condition is satisfied or a stopping limit is reached.
+Instead of executing each node only once in a straight line, the graph can loop back to an earlier node.
