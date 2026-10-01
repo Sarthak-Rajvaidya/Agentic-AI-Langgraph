@@ -2,7 +2,12 @@ from typing import TypedDict, Annotated
 
 from dotenv import load_dotenv
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    AIMessage
+)
+
 from langchain_groq import ChatGroq
 
 from langgraph.graph import StateGraph, START, END
@@ -10,40 +15,45 @@ from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-# ============================================================
-# 1. LOAD ENVIRONMENT VARIABLES
-# ============================================================
+# --------------------------------------------------
+# LOAD ENVIRONMENT VARIABLES
+# --------------------------------------------------
 
 load_dotenv()
 
 
-# ============================================================
-# 2. INITIALIZE GROQ LLM
-# ============================================================
+# --------------------------------------------------
+# GROQ LLM
+# --------------------------------------------------
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
-    temperature=0.7,
+    temperature=0.7
 )
 
 
-# ============================================================
-# 3. DEFINE CHAT STATE
-# ============================================================
+# --------------------------------------------------
+# STATE
+# --------------------------------------------------
 
 class ChatState(TypedDict):
-    messages: Annotated[list[BaseMessage], add_messages]
+
+    messages: Annotated[
+        list[BaseMessage],
+        add_messages
+    ]
 
 
-# ============================================================
-# 4. CHAT NODE
-# ============================================================
+# --------------------------------------------------
+# CHAT NODE
+# --------------------------------------------------
 
 def chat_node(state: ChatState):
 
     messages = state["messages"]
 
     try:
+
         response = llm.invoke(messages)
 
         return {
@@ -54,92 +64,52 @@ def chat_node(state: ChatState):
 
         print(f"LLM Error: {e}")
 
-        # Graceful fallback
         return {
             "messages": [
-                {
-                    "role": "assistant",
-                    "content": (
-                        "Sorry, I am temporarily unable to "
-                        "process your request. Please try again."
+                AIMessage(
+                    content=(
+                        "Sorry, I am temporarily unable "
+                        "to process your request. "
+                        "Please try again."
                     )
-                }
+                )
             ]
         }
 
 
-# ============================================================
-# 5. CREATE GRAPH
-# ============================================================
+# --------------------------------------------------
+# BUILD GRAPH
+# --------------------------------------------------
 
-def build_graph():
+builder = StateGraph(ChatState)
 
-    graph = StateGraph(ChatState)
+builder.add_node(
+    "chat_node",
+    chat_node
+)
 
-    # Add node
-    graph.add_node(
-        "chat_node",
-        chat_node
-    )
+builder.add_edge(
+    START,
+    "chat_node"
+)
 
-    # START → chat_node
-    graph.add_edge(
-        START,
-        "chat_node"
-    )
-
-    # chat_node → END
-    graph.add_edge(
-        "chat_node",
-        END
-    )
-
-    return graph
+builder.add_edge(
+    "chat_node",
+    END
+)
 
 
-# ============================================================
-# 6. CHECKPOINTER
-# ============================================================
+# --------------------------------------------------
+# CHECKPOINTER
+# --------------------------------------------------
 
 checkpointer = InMemorySaver()
 
 
-# ============================================================
-# 7. COMPILE GRAPH
-# ============================================================
-
-builder = build_graph()
+# --------------------------------------------------
+# COMPILE GRAPH
+# --------------------------------------------------
 
 chatbot = builder.compile(
     checkpointer=checkpointer
 )
-
-
-# ============================================================
-# 8. CHAT FUNCTION
-# ============================================================
-
-def chat(
-    message: str,
-    thread_id: str = "default"
-):
-
-    config = {
-        "configurable": {
-            "thread_id": thread_id
-        }
-    }
-
-    result = chatbot.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": message
-                }
-            ]
-        },
-        config=config
-    )
-
-    return result["messages"][-1].content
