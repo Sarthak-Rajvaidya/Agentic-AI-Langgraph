@@ -1,25 +1,37 @@
 import streamlit as st
+import uuid
+
 from langgraph_backend import chatbot
 from langchain_core.messages import HumanMessage
 
 
 # --------------------------------------------------
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # --------------------------------------------------
 
 st.set_page_config(
     page_title="LangGraph AI Assistant",
     page_icon="🤖",
-    layout="centered"
+    layout="wide"
 )
 
 
 # --------------------------------------------------
-# HEADER
+# SESSION STATE
 # --------------------------------------------------
 
-st.title("🤖 LangGraph AI Assistant")
-st.caption("Built while learning Agentic AI with LangGraph + Groq")
+if "chats" not in st.session_state:
+    st.session_state["chats"] = {}
+
+if "current_chat_id" not in st.session_state:
+    chat_id = str(uuid.uuid4())
+
+    st.session_state["current_chat_id"] = chat_id
+
+    st.session_state["chats"][chat_id] = {
+        "title": "New Chat",
+        "messages": []
+    }
 
 
 # --------------------------------------------------
@@ -28,71 +40,81 @@ st.caption("Built while learning Agentic AI with LangGraph + Groq")
 
 with st.sidebar:
 
-    st.header("⚙️ Agent Configuration")
+    st.title("🤖 LangGraph AI")
 
-    st.markdown("""
-    **Architecture**
+    # New Chat
+    if st.button(
+        "＋ New Chat",
+        use_container_width=True
+    ):
 
-    🖥️ Streamlit  
-    ↓  
-    🧠 LangGraph  
-    ↓  
-    💬 Groq LLM  
-    """)
+        chat_id = str(uuid.uuid4())
 
-    st.divider()
+        st.session_state["current_chat_id"] = chat_id
 
-    st.subheader("🧠 Concepts Implemented")
-
-    st.markdown("""
-    - StateGraph
-    - State
-    - Nodes
-    - START / END
-    - `add_messages`
-    - Checkpointer
-    - Thread-based memory
-    - Conversation history
-    """)
-
-    st.divider()
-
-    st.subheader("🔗 Thread")
-
-    st.code("thread-1")
-
-    if st.button("🗑️ Clear Chat"):
-
-        st.session_state["message_history"] = []
+        st.session_state["chats"][chat_id] = {
+            "title": "New Chat",
+            "messages": []
+        }
 
         st.rerun()
 
+    st.divider()
+
+    st.subheader("💬 Chat History")
+
+    # Display previous chats
+    for chat_id, chat in st.session_state["chats"].items():
+
+        title = chat["title"]
+
+        if st.button(
+            title,
+            key=f"chat_{chat_id}",
+            use_container_width=True
+        ):
+
+            st.session_state["current_chat_id"] = chat_id
+
+            st.rerun()
+
 
 # --------------------------------------------------
-# THREAD CONFIGURATION
+# CURRENT CHAT
+# --------------------------------------------------
+
+current_chat_id = st.session_state["current_chat_id"]
+
+current_chat = st.session_state["chats"][current_chat_id]
+
+
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
+
+st.title("🤖 LangGraph AI Assistant")
+
+st.caption(
+    "Agentic AI learning project • LangGraph + Groq"
+)
+
+
+# --------------------------------------------------
+# CONFIG
 # --------------------------------------------------
 
 CONFIG = {
     "configurable": {
-        "thread_id": "thread-1"
+        "thread_id": current_chat_id
     }
 }
 
 
 # --------------------------------------------------
-# SESSION STATE
+# DISPLAY CURRENT CHAT
 # --------------------------------------------------
 
-if "message_history" not in st.session_state:
-
-    st.session_state["message_history"] = []
-
-
-# --------------------------------------------------
-# DISPLAY CHAT HISTORY
-# --------------------------------------------------
-
-for message in st.session_state["message_history"]:
+for message in current_chat["messages"]:
 
     with st.chat_message(message["role"]):
 
@@ -104,21 +126,29 @@ for message in st.session_state["message_history"]:
 # --------------------------------------------------
 
 user_input = st.chat_input(
-    "Ask something about AI, LangGraph, Python..."
+    "Message LangGraph AI..."
 )
 
-
-# --------------------------------------------------
-# HANDLE USER MESSAGE
-# --------------------------------------------------
 
 if user_input:
 
     # ----------------------------------------------
-    # Display user message
+    # Create title from first message
     # ----------------------------------------------
 
-    st.session_state["message_history"].append(
+    if current_chat["title"] == "New Chat":
+
+        current_chat["title"] = (
+            user_input[:30]
+            + ("..." if len(user_input) > 30 else "")
+        )
+
+
+    # ----------------------------------------------
+    # Save user message
+    # ----------------------------------------------
+
+    current_chat["messages"].append(
         {
             "role": "user",
             "content": user_input
@@ -131,7 +161,7 @@ if user_input:
 
 
     # ----------------------------------------------
-    # Send message to LangGraph
+    # Call LangGraph
     # ----------------------------------------------
 
     with st.chat_message("assistant"):
@@ -141,22 +171,26 @@ if user_input:
             response = chatbot.invoke(
                 {
                     "messages": [
-                        HumanMessage(content=user_input)
+                        HumanMessage(
+                            content=user_input
+                        )
                     ]
                 },
                 config=CONFIG
             )
 
-            ai_message = response["messages"][-1].content
+            ai_message = response[
+                "messages"
+            ][-1].content
 
             st.markdown(ai_message)
 
 
     # ----------------------------------------------
-    # Save assistant response
+    # Save AI response
     # ----------------------------------------------
 
-    st.session_state["message_history"].append(
+    current_chat["messages"].append(
         {
             "role": "assistant",
             "content": ai_message
