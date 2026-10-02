@@ -1,8 +1,7 @@
 import streamlit as st
 import uuid
 
-from langgraph_backend import chatbot
-from langchain_core.messages import HumanMessage
+from langgraph_backend import chat_stream
 
 
 # ============================================================
@@ -25,7 +24,7 @@ if "chats" not in st.session_state:
     st.session_state["chats"] = {}
 
 
-# Store currently selected conversation
+# Create first chat
 if "current_chat_id" not in st.session_state:
 
     chat_id = str(uuid.uuid4())
@@ -78,6 +77,7 @@ with st.sidebar:
     - Checkpointer
     - Thread-based memory
     - Conversation history
+    - LLM Streaming
     """)
 
 
@@ -92,7 +92,7 @@ with st.sidebar:
 
 
     # --------------------------------------------------------
-    # NEW CHAT BUTTON
+    # NEW CHAT
     # --------------------------------------------------------
 
     if st.button(
@@ -119,11 +119,11 @@ with st.sidebar:
     # DISPLAY CHAT HISTORY
     # --------------------------------------------------------
 
-    # Show newest conversations first
     chats = list(
         st.session_state["chats"].items()
     )
 
+    # Newest chats first
     chats.reverse()
 
 
@@ -131,7 +131,7 @@ with st.sidebar:
 
         title = chat["title"]
 
-        # Highlight current chat
+        # Highlight active chat
         if chat_id == st.session_state["current_chat_id"]:
 
             button_label = f"🟢 {title}"
@@ -173,18 +173,7 @@ st.caption(
 
 
 # ============================================================
-# LANGGRAPH CONFIGURATION
-# ============================================================
-
-CONFIG = {
-    "configurable": {
-        "thread_id": current_chat_id
-    }
-}
-
-
-# ============================================================
-# DISPLAY CURRENT CONVERSATION
+# DISPLAY CURRENT CHAT
 # ============================================================
 
 for message in current_chat["messages"]:
@@ -243,37 +232,21 @@ if user_input:
 
 
     # --------------------------------------------------------
-    # SEND MESSAGE TO LANGGRAPH
+    # STREAM AI RESPONSE
     # --------------------------------------------------------
 
     with st.chat_message("assistant"):
 
-        with st.spinner("Thinking..."):
-
-            response = chatbot.invoke(
-                {
-                    "messages": [
-                        HumanMessage(
-                            content=user_input
-                        )
-                    ]
-                },
-                config=CONFIG
+        ai_message = st.write_stream(
+            chat_stream(
+                message=user_input,
+                thread_id=current_chat_id
             )
-
-
-            # Get latest AI response
-            ai_message = response[
-                "messages"
-            ][-1].content
-
-
-            # Display AI response
-            st.markdown(ai_message)
+        )
 
 
     # --------------------------------------------------------
-    # SAVE AI RESPONSE
+    # SAVE COMPLETE AI RESPONSE
     # --------------------------------------------------------
 
     current_chat["messages"].append(
