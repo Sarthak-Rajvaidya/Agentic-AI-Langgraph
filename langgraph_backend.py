@@ -4,27 +4,32 @@ from dotenv import load_dotenv
 
 from langchain_core.messages import (
     BaseMessage,
-    HumanMessage,
     AIMessage
 )
 
 from langchain_groq import ChatGroq
 
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import (
+    StateGraph,
+    START,
+    END
+)
+
 from langgraph.graph.message import add_messages
+
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-# --------------------------------------------------
+# ============================================================
 # LOAD ENVIRONMENT VARIABLES
-# --------------------------------------------------
+# ============================================================
 
 load_dotenv()
 
 
-# --------------------------------------------------
+# ============================================================
 # GROQ LLM
-# --------------------------------------------------
+# ============================================================
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
@@ -32,9 +37,9 @@ llm = ChatGroq(
 )
 
 
-# --------------------------------------------------
+# ============================================================
 # STATE
-# --------------------------------------------------
+# ============================================================
 
 class ChatState(TypedDict):
 
@@ -44,9 +49,9 @@ class ChatState(TypedDict):
     ]
 
 
-# --------------------------------------------------
+# ============================================================
 # CHAT NODE
-# --------------------------------------------------
+# ============================================================
 
 def chat_node(state: ChatState):
 
@@ -77,21 +82,24 @@ def chat_node(state: ChatState):
         }
 
 
-# --------------------------------------------------
+# ============================================================
 # BUILD GRAPH
-# --------------------------------------------------
+# ============================================================
 
 builder = StateGraph(ChatState)
+
 
 builder.add_node(
     "chat_node",
     chat_node
 )
 
+
 builder.add_edge(
     START,
     "chat_node"
 )
+
 
 builder.add_edge(
     "chat_node",
@@ -99,24 +107,52 @@ builder.add_edge(
 )
 
 
-# --------------------------------------------------
+# ============================================================
 # CHECKPOINTER
-# --------------------------------------------------
+# ============================================================
 
 checkpointer = InMemorySaver()
 
 
-# --------------------------------------------------
+# ============================================================
 # COMPILE GRAPH
-# --------------------------------------------------
+# ============================================================
 
 chatbot = builder.compile(
     checkpointer=checkpointer
 )
 
 
-chatbot.stream(
-    ...,
-    stream_mode="messages",
-    version="v2"
-)
+# ============================================================
+# STREAMING FUNCTION
+# ============================================================
+
+def chat_stream(message: str, thread_id: str):
+
+    config = {
+        "configurable": {
+            "thread_id": thread_id
+        }
+    }
+
+    for chunk in chatbot.stream(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ]
+        },
+        config=config,
+        stream_mode="messages",
+        version="v2"
+    ):
+
+        if chunk["type"] == "messages":
+
+            message_chunk, metadata = chunk["data"]
+
+            if message_chunk.content:
+
+                yield message_chunk.content
