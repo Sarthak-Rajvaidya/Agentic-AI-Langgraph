@@ -113,3 +113,10 @@ checkpointer = InMemorySaver()
 chatbot = builder.compile(
     checkpointer=checkpointer
 )
+
+
+chatbot.stream(
+    ...,
+    stream_mode="messages",
+    version="v2"
+)
