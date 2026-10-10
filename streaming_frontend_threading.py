@@ -24,6 +24,8 @@ st.sidebar.title('Langgraph chatbot')
 st.sidebar.button('New Chat')
 st.sidebar.header('My Conversation')
 
+st.sidebar.text(st.session_state['thread_id'])
+
 # loading the conversation history
 for message in st.session_state['message_history']:
     with st.chat_message(message['role']):
