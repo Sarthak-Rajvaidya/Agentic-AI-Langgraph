@@ -7,6 +7,10 @@ import uuid
 # st.session_state -> dict -> 
 
 # ****************utility functionb************
+def generate_thread_id():
+    thread_id = uuid.uuid4()
+    return thread_id
+
 CONFIG = {'configurable': {'thread_id': 'thread-1'}}
 
 if 'message_history' not in st.session_state:
