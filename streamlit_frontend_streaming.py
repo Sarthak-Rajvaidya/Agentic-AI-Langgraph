@@ -10,6 +10,9 @@ if 'message_history' not in st.session_state:
     
     
 #*************************SidebarUI***********
+st.sidebar.title('Langgraph chatbot')
+st.sidebar.button('New Chat')
+st.sidebar.header('My Conversation')
 
 # loading the conversation history
 for message in st.session_state['message_history']:
