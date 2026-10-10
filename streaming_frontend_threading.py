@@ -41,7 +41,7 @@ if user_input:
     with st.chat_message('user'):
         st.text(user_input)
         
-    CONFIG = {'configurable': {'thread_id': 'thread-1'}}
+    CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
 
     # first add the message to message_history
     with st.chat_message('assistant'):
