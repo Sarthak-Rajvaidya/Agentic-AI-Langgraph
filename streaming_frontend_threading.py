@@ -5,6 +5,8 @@ from langchain_core.messages import HumanMessage
 import uuid 
 #uuid - random naya thread id generate karnekye liye"
 # st.session_state -> dict -> 
+
+# ****************utility functionb************
 CONFIG = {'configurable': {'thread_id': 'thread-1'}}
 
 if 'message_history' not in st.session_state:
