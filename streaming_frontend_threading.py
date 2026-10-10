@@ -2,7 +2,8 @@
 import streamlit as st
 from langgraph_backend import chatbot
 from langchain_core.messages import HumanMessage
-
+import uuid 
+#uuid - random naya thread id generate karnekye liye"
 # st.session_state -> dict -> 
 CONFIG = {'configurable': {'thread_id': 'thread-1'}}
 
