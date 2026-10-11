@@ -1,52 +1,44 @@
+
 from typing import TypedDict, Annotated
 
 from dotenv import load_dotenv
 
 from langchain_core.messages import (
     BaseMessage,
-    AIMessage
+    HumanMessage,
+    AIMessage,
 )
 
 from langchain_groq import ChatGroq
 
-from langgraph.graph import (
-    StateGraph,
-    START,
-    END
-)
-
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-
 from langgraph.checkpoint.memory import InMemorySaver
 
 
 # ============================================================
-# LOAD ENVIRONMENT VARIABLES
+# ENVIRONMENT
 # ============================================================
 
 load_dotenv()
 
 
 # ============================================================
-# GROQ LLM
+# GROQ MODEL
 # ============================================================
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
-    temperature=0.7
+    temperature=0.7,
 )
 
 
 # ============================================================
-# STATE
+# GRAPH STATE
 # ============================================================
 
 class ChatState(TypedDict):
-
-    messages: Annotated[
-        list[BaseMessage],
-        add_messages
-    ]
+    messages: Annotated[list[BaseMessage], add_messages]
 
 
 # ============================================================
@@ -54,27 +46,18 @@ class ChatState(TypedDict):
 # ============================================================
 
 def chat_node(state: ChatState):
-
-    messages = state["messages"]
-
     try:
-
-        response = llm.invoke(messages)
-
-        return {
-            "messages": [response]
-        }
+        response = llm.invoke(state["messages"])
+        return {"messages": [response]}
 
     except Exception as e:
-
         print(f"LLM Error: {e}")
 
         return {
             "messages": [
                 AIMessage(
                     content=(
-                        "Sorry, I am temporarily unable "
-                        "to process your request. "
+                        "Sorry, I couldn't process that request. "
                         "Please try again."
                     )
                 )
@@ -88,23 +71,10 @@ def chat_node(state: ChatState):
 
 builder = StateGraph(ChatState)
 
+builder.add_node("chat_node", chat_node)
 
-builder.add_node(
-    "chat_node",
-    chat_node
-)
-
-
-builder.add_edge(
-    START,
-    "chat_node"
-)
-
-
-builder.add_edge(
-    "chat_node",
-    END
-)
+builder.add_edge(START, "chat_node")
+builder.add_edge("chat_node", END)
 
 
 # ============================================================
@@ -113,14 +83,31 @@ builder.add_edge(
 
 checkpointer = InMemorySaver()
 
+chatbot = builder.compile(checkpointer=checkpointer)
+
 
 # ============================================================
-# COMPILE GRAPH
+# HELPER: BUILD THREAD CONFIG
 # ============================================================
 
-chatbot = builder.compile(
-    checkpointer=checkpointer
-)
+def get_config(thread_id: str):
+    return {
+        "configurable": {
+            "thread_id": str(thread_id)
+        }
+    }
+
+
+# ============================================================
+# HELPER: LOAD CONVERSATION FROM LANGGRAPH
+# ============================================================
+
+def get_chat_history(thread_id: str):
+    config = get_config(thread_id)
+
+    snapshot = chatbot.get_state(config)
+
+    return snapshot.values.get("messages", [])
 
 
 # ============================================================
@@ -128,31 +115,26 @@ chatbot = builder.compile(
 # ============================================================
 
 def chat_stream(message: str, thread_id: str):
-
-    config = {
-        "configurable": {
-            "thread_id": thread_id
-        }
-    }
+    config = get_config(thread_id)
 
     for chunk in chatbot.stream(
         {
             "messages": [
-                {
-                    "role": "user",
-                    "content": message
-                }
+                HumanMessage(content=message)
             ]
         },
         config=config,
         stream_mode="messages",
-        version="v2"
+        version="v2",
     ):
-
         if chunk["type"] == "messages":
-
             message_chunk, metadata = chunk["data"]
 
-            if message_chunk.content:
-
-                yield message_chunk.content
+            # Stream only output from our chat node.
+            if (
+                metadata.get("langgraph_node") == "chat_node"
+                and message_chunk.content
+            ):
+                # Handle ordinary text chunks.
+                if isinstance(message_chunk.content, str):
+                    yield message_chunk.content
