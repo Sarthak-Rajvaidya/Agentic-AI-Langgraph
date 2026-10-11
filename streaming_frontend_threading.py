@@ -41,9 +41,9 @@ if st.sidebar.button('New Chat'):
 st.sidebar.header('My Conversation')
 
 for thread_id in st.session_state['chat_threads']:
-    st.sidebar.text(st.session_state['thread_id'])
+    st.sidebar.button(str(thread_id))
 
-st.sidebar.text(st.session_state['thread_id'])
+
 
 # loading the conversation history
 for message in st.session_state['message_history']:
