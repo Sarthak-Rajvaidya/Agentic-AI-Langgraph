@@ -31,6 +31,8 @@ if 'thread_id' not in st.session_state:
 if 'chat_threads' not in st.session_state:
     st.session_state['chat_threads'] = []
     
+add_thread(st.session_state['thread_id'])
+    
 #*************************SidebarUI***********
 st.sidebar.title('Langgraph chatbot')
 if st.sidebar.button('New Chat'):
