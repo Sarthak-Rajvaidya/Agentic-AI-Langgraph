@@ -25,6 +25,9 @@ if 'message_history' not in st.session_state:
 if 'thread_id' not in st.session_state:
     st.session_state['thread_id'] = generate_thread_id()
     
+if 'chat_threads' not in st.session_state:
+    st.session_state['chat_threads'] = []
+    
 #*************************SidebarUI***********
 st.sidebar.title('Langgraph chatbot')
 if st.sidebar.button('New Chat'):
