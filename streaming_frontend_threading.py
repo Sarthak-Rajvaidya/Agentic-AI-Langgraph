@@ -11,7 +11,11 @@ def generate_thread_id():
     thread_id = uuid.uuid4()
     return thread_id
 
+#new utily fun -(1) new thread id
 
+def reset_chat():
+    thread_id = generate_thread_id()
+    
 
 if 'message_history' not in st.session_state:
     st.session_state['message_history'] = []
