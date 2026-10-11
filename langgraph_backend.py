@@ -2,30 +2,18 @@
 from typing import TypedDict, Annotated
 
 from dotenv import load_dotenv
-
-from langchain_core.messages import (
-    BaseMessage,
-    HumanMessage,
-    AIMessage,
-)
-
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_groq import ChatGroq
-
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import InMemorySaver
 
 
-# ============================================================
-# ENVIRONMENT
-# ============================================================
+# =========================
+# 1. Load environment
+# =========================
 
 load_dotenv()
-
-
-# ============================================================
-# GROQ MODEL
-# ============================================================
 
 llm = ChatGroq(
     model="openai/gpt-oss-20b",
@@ -33,41 +21,26 @@ llm = ChatGroq(
 )
 
 
-# ============================================================
-# GRAPH STATE
-# ============================================================
+# =========================
+# 2. Define graph state
+# =========================
 
 class ChatState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 
-# ============================================================
-# CHAT NODE
-# ============================================================
+# =========================
+# 3. Define chatbot node
+# =========================
 
 def chat_node(state: ChatState):
-    try:
-        response = llm.invoke(state["messages"])
-        return {"messages": [response]}
-
-    except Exception as e:
-        print(f"LLM Error: {e}")
-
-        return {
-            "messages": [
-                AIMessage(
-                    content=(
-                        "Sorry, I couldn't process that request. "
-                        "Please try again."
-                    )
-                )
-            ]
-        }
+    response = llm.invoke(state["messages"])
+    return {"messages": [response]}
 
 
-# ============================================================
-# BUILD GRAPH
-# ============================================================
+# =========================
+# 4. Build LangGraph
+# =========================
 
 builder = StateGraph(ChatState)
 
@@ -77,18 +50,20 @@ builder.add_edge(START, "chat_node")
 builder.add_edge("chat_node", END)
 
 
-# ============================================================
-# CHECKPOINTER
-# ============================================================
+# =========================
+# 5. Add conversation memory
+# =========================
 
 checkpointer = InMemorySaver()
 
-chatbot = builder.compile(checkpointer=checkpointer)
+chatbot = builder.compile(
+    checkpointer=checkpointer
+)
 
 
-# ============================================================
-# HELPER: BUILD THREAD CONFIG
-# ============================================================
+# =========================
+# 6. Thread configuration
+# =========================
 
 def get_config(thread_id: str):
     return {
@@ -98,9 +73,9 @@ def get_config(thread_id: str):
     }
 
 
-# ============================================================
-# HELPER: LOAD CONVERSATION FROM LANGGRAPH
-# ============================================================
+# =========================
+# 7. Retrieve chat history
+# =========================
 
 def get_chat_history(thread_id: str):
     config = get_config(thread_id)
@@ -110,9 +85,9 @@ def get_chat_history(thread_id: str):
     return snapshot.values.get("messages", [])
 
 
-# ============================================================
-# STREAMING FUNCTION
-# ============================================================
+# =========================
+# 8. Stream assistant response
+# =========================
 
 def chat_stream(message: str, thread_id: str):
     config = get_config(thread_id)
@@ -127,14 +102,27 @@ def chat_stream(message: str, thread_id: str):
         stream_mode="messages",
         version="v2",
     ):
-        if chunk["type"] == "messages":
-            message_chunk, metadata = chunk["data"]
+        if chunk["type"] != "messages":
+            continue
 
-            # Stream only output from our chat node.
-            if (
-                metadata.get("langgraph_node") == "chat_node"
-                and message_chunk.content
-            ):
-                # Handle ordinary text chunks.
-                if isinstance(message_chunk.content, str):
-                    yield message_chunk.content
+        message_chunk, metadata = chunk["data"]
+
+        # Stream only the assistant's chatbot-node output.
+        if metadata.get("langgraph_node") != "chat_node":
+            continue
+
+        content = message_chunk.content
+
+        # Handle normal text responses.
+        if isinstance(content, str) and content:
+            yield content
+
+        # Handle content blocks, if the model returns them.
+        elif isinstance(content, list):
+            for block in content:
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "text"
+                    and block.get("text")
+                ):
+                    yield block["text"]
