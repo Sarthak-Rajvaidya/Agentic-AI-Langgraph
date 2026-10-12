@@ -56,7 +56,7 @@ builder.add_edge("chat_node", END)
 # 5. Add conversation memory
 # =========================
 
-checkpointer = InMemorySaver()
+checkpointer = SqliteSaver()
 
 chatbot = builder.compile(
     checkpointer=checkpointer
