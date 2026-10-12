@@ -1,0 +1,1 @@
+#Here look now As we are building our bot but our bot doesnt store histyory ok...that not there as i reload it it will get removed ok..so to solve these error what we need we need a databse so we will use sqlite with langgraph to store databse 
