@@ -9,7 +9,7 @@ from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.sqlite import SqliteSaver
-
+import sqlite3
 
 # =========================
 # 1. Load environment
@@ -55,6 +55,7 @@ builder.add_edge("chat_node", END)
 # =========================
 # 5. Add conversation memory
 # =========================
+
 
 checkpointer = SqliteSaver()
 
