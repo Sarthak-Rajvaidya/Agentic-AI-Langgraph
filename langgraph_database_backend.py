@@ -56,7 +56,7 @@ builder.add_edge("chat_node", END)
 # 5. Add conversation memory
 # =========================
 
-
+sqlite3.connect(database='chatbot.db',check_same_thread=False)
 checkpointer = SqliteSaver()
 
 chatbot = builder.compile(
